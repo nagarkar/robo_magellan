@@ -1,4 +1,4 @@
-=  Eclipse setup +
+=  Eclipse setup
 == Executable build configuration ==
 Source Tree:
 + src
