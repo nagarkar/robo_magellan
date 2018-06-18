@@ -17,14 +17,17 @@
 ## Executable build configuration
 ### Source Tree (src/):
 \+ bbahrs
+
 \+ imu
+
 \+ qpcpp
+
 \+ util
 
 ### Include folders
 \+ src
-\+ src/qpcpp (various folders)
 
+\+ src/qpcpp (various folders)
 
 <a name="link1_2"/>
 
@@ -32,13 +35,13 @@
 
 ### Source Tree changes from the executable configuration
 \- src/*/main.cpp (Exclude the main.cpp or other files that have a main method)
+
 \+ tests
 
 ### Include folders changes from executable configuration
 \+ testcases (for various cpp files). These cpp are included in the test suites in the 'tests' folder.
 
-______________________________
-<a name="link1_2"/>
+<a name="link2"/>
 
 # Running Tests
 
