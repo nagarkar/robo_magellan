@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model version="4.1.2" links="0">
+ <framework name="qpcpp"/>
+ <package name="AOs" stereotype="0x02">
+  <class name="Blinky" superclass="qpcpp::QActive">
+   <attribute name="m_timeEvt" type="QP::QTimeEvt" visibility="0x02" properties="0x00"/>
+   <operation name="Blinky" type="" visibility="0x00" properties="0x00">
+    <documentation>Blinky constructor</documentation>
+    <code>  : QActive(Q_STATE_CAST(&amp;Blinky::initial)),
+    m_timeEvt(this, TIMEOUT_SIG)</code>
+   </operation>
+   <statechart>
+    <initial target="../1">
+     <action>// arm the private time event to expire in 1/2s
+// and periodically every 1/2 second
+me-&gt;m_timeEvt.armX(BLINKY_TICKS, BLINKY_TICKS);</action>
+     <initial_glyph conn="2,3,5,1,20,4,-4">
+      <action box="0,-2,6,2"/>
+     </initial_glyph>
+    </initial>
+    <state name="off">
+     <entry>BSP_ledOff();</entry>
+     <tran trig="TIMEOUT" target="../../2">
+      <tran_glyph conn="2,13,3,1,18,6,-2">
+       <action box="0,-2,8,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="2,5,16,10">
+      <entry box="1,2,12,4"/>
+     </state_glyph>
+    </state>
+    <state name="on">
+     <entry>BSP_ledOn();</entry>
+     <tran trig="TIMEOUT" target="../../1">
+      <tran_glyph conn="2,25,3,1,20,-15,-4">
+       <action box="0,-2,8,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="2,17,16,10">
+      <entry box="1,2,12,4"/>
+     </state_glyph>
+    </state>
+    <state_diagram size="30,29"/>
+   </statechart>
+  </class>
+  <class name="AHRS" superclass="qpcpp::QActive">
+   <attribute name="m_timeEvt" type="QP::QTimeEvt" visibility="0x02" properties="0x00"/>
+   <operation name="AHRS" type="" visibility="0x00" properties="0x00">
+    <code>  : QActive(Q_STATE_CAST(&amp;AHRS::initial)),
+    m_timeEvt(this, TIMEOUT_SIG)</code>
+   </operation>
+   <statechart>
+    <initial target="../1">
+     <action>if(quaternion_calculation_mode == SOFTWARE) {
+    me-&gt;m_timeEvt.armX(AHRS_TICKS, AHRS_TICKS);
+}
+BSP_SetupIMU();</action>
+     <initial_glyph conn="33,11,5,0,-21,7">
+      <action box="0,-2,10,2"/>
+     </initial_glyph>
+    </initial>
+    <state name="RUNNING">
+     <tran trig="TIMEOUT" target="..">
+      <action brief="collect and publish">BSP_PublishAttitude();</action>
+      <tran_glyph conn="24,22,1,2,15,15,-21,-8">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="7,18,17,11"/>
+    </state>
+    <state_diagram size="80,50"/>
+   </statechart>
+  </class>
+  <class name="TelemetryServer" superclass="qpcpp::QActive">
+   <attribute name="attitudeBuffer" type="CircularBuffer&lt;Attitude&gt; *" visibility="0x00" properties="0x00"/>
+   <operation name="TelemetryServer" type="" visibility="0x00" properties="0x00">
+    <parameter name="buffer" type="CircularBuffer&lt;Attitude&gt; *"/>
+    <code>    : QActive(Q_STATE_CAST(&amp;TelemetryServer::initial)), attitudeBuffer(buffer)</code>
+   </operation>
+   <statechart>
+    <initial target="../1">
+     <initial_glyph conn="15,4,5,0,9,12">
+      <action box="0,-2,10,2"/>
+     </initial_glyph>
+    </initial>
+    <state name="RUNNING">
+     <entry>TelemetryServiceImpl::RunServer(me-&gt;attitudeBuffer, true /* wait */);</entry>
+     <state_glyph node="20,16,23,13">
+      <entry box="1,2,6,2"/>
+     </state_glyph>
+    </state>
+    <state_diagram size="80,50"/>
+   </statechart>
+  </class>
+  <class name="GPS" superclass="qpcpp::QActive">
+   <attribute name="m_timeEvt" type="QP::QTimeEvt" visibility="0x02" properties="0x00"/>
+   <attribute name="error_type" type="enum {GPS_ERROR_NONE, GPS_SETUP_ERROR, GPS_GET_ERROR, MAX_ERRORS = 5}" visibility="0x02" properties="0x00"/>
+   <attribute name="n_errors" type="int" visibility="0x00" properties="0x00"/>
+   <operation name="GPS" type="" visibility="0x00" properties="0x00">
+    <code>  : QActive(Q_STATE_CAST(&amp;GPS::initial)),
+    m_timeEvt(this, TIMEOUT_SIG)</code>
+   </operation>
+   <statechart>
+    <initial target="../2">
+     <action brief="set timer">me-&gt;m_timeEvt.armX(BSP_TICKS_PER_SEC, BSP_TICKS_PER_SEC);</action>
+     <initial_glyph conn="9,6,5,0,6,24">
+      <action box="0,-2,10,2"/>
+     </initial_glyph>
+    </initial>
+    <state name="RUNNING_WAIT_STATE">
+     <tran trig="TIMEOUT">
+      <action brief="Get Data">gps_data_t gps_out;
+if(!BSP_GPS_Get(gps_out)){
+    me-&gt;error_type = GPS_SETUP_ERROR;
+} else {
+    me-&gt;error_type = GPS_ERROR_NONE;
+}</action>
+      <choice target="../../../3">
+       <guard brief="error">me-&gt;error_type != GPS_ERROR_NONE</guard>
+       <choice_glyph conn="72,12,4,1,27,-7">
+        <action box="-7,9,10,2"/>
+       </choice_glyph>
+      </choice>
+      <choice target="../..">
+       <guard brief="noerror">me-&gt;error_type == GPS_ERROR_NONE</guard>
+       <action brief="reset errors">me-&gt;n_errors = 0;</action>
+       <choice_glyph conn="72,12,5,1,-21">
+        <action box="-19,1,17,4"/>
+       </choice_glyph>
+      </choice>
+      <tran_glyph conn="51,9,1,-1,21,3">
+       <action box="0,-2,19,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="32,5,19,12"/>
+    </state>
+    <state name="SETUP">
+     <entry brief="do setup">if(!BSP_GPS_Setup()) {
+   me-&gt;error_type = GPS_SETUP_ERROR;
+} else {
+   me-&gt;error_type = GPS_ERROR_NONE;
+}</entry>
+     <tran trig="TIMEOUT">
+      <choice target="../../../3">
+       <guard brief="error">me-&gt;error_type != GPS_ERROR_NONE</guard>
+       <choice_glyph conn="38,23,5,0,17,9">
+        <action box="1,0,10,2"/>
+       </choice_glyph>
+      </choice>
+      <choice target="../../../1">
+       <guard brief="noerror">me-&gt;error_type == GPS_ERROR_NONE</guard>
+       <choice_glyph conn="38,23,4,2,-6">
+        <action box="1,-4,10,2"/>
+       </choice_glyph>
+      </choice>
+      <tran_glyph conn="31,34,1,-1,7,-11">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="12,30,19,13">
+      <entry box="1,2,12,3"/>
+     </state_glyph>
+    </state>
+    <state name="ERROR">
+     <entry brief="check error count">me-&gt;n_errors++;
+
+if(!BSP_GPS_Close()) {
+  printf(&quot;ERROR: Could not Close GPS&quot;);
+}
+if (me-&gt;n_errors &gt; MAX_ERRORS) {
+  printf(&quot;FATAL ERROR IN GPS: Exceeded Safe Error Limit. STOPPING STATE MACHINE&quot;);
+  me-&gt;m_timeEvt.disarm();
+}</entry>
+     <tran trig="TIMEOUT" target="../../2">
+      <tran_glyph conn="51,37,3,1,-20">
+       <action box="-16,1,10,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="51,32,14,11">
+      <entry box="1,2,11,4"/>
+     </state_glyph>
+    </state>
+    <state_diagram size="80,50"/>
+   </statechart>
+  </class>
+ </package>
+ <directory name=".">
+  <file name="active_objects.cpp">
+   <text>#include &quot;qpcpp.h&quot; // QP/C++ framework API
+#include &quot;bsp.h&quot;   // Board Support Package interface
+#include &quot;active_objects.h&quot;
+
+/**
+ * This file contains teh following format:
+ * &lt;declaration of AO type&gt;
+ * &lt;declaration of local variable of the type&gt;
+ *
+ * This way, the order of declarations matters, and earlier variables can be used later.
+ *
+ * At teh end of the file, all the variables are declared as opaque pointers to QActive objects,
+ * and used elsewhere, for instance, to start the AO in the main program.
+**/
+using namespace QP;
+
+$declare${AOs::Blinky}
+Blinky l_blinky;
+QActive * const AO_Blinky    = &amp;l_blinky; // opaque pointer
+$define${AOs::Blinky}
+
+
+$declare${AOs::AHRS}
+AHRS l_ahrs;
+QActive * const AO_AHRS      = &amp;l_ahrs; // opaque pointer
+$define${AOs::AHRS}
+
+
+$declare${AOs::GPS}
+GPS l_gps;
+QActive * const AO_GPS       = &amp;l_gps; // opaque pointer
+$define${AOs::GPS}
+
+$declare${AOs::TelemetryServer}
+TelemetryServer l_tServer(attitudeBuffer);
+QActive * const AO_TServer   = &amp;l_tServer; // opaque pointer
+$define${AOs::TelemetryServer}
+
+
+// Opaque pointers
+</text>
+  </file>
+  <file name="active_objects.h">
+   <text>#pragma once
+
+#include &quot;controller/TelemetryServiceImpl.h&quot;
+#include &quot;controller/Attitude.h&quot;
+#include &quot;util/CircularBuffer.h&quot;
+
+using namespace QP;
+
+enum Signals {
+    DUMMY_SIG = Q_USER_SIG,
+    MAX_PUB_SIG,  // the last published signal
+    IMU_STARTED_SIG,
+    TIMEOUT_SIG,
+    MAX_SIG       // the last signal
+};
+
+extern QActive * const AO_Blinky; // opaque pointer
+extern QActive * const AO_AHRS; // opaque pointer
+extern QActive * const AO_GPS; // opaque pointer
+extern QActive * const AO_TServer; // opaque pointer
+
+#ifdef CPP
+}
+#endif</text>
+  </file>
+  <file name="qp_plugs.cpp">
+   <text>#include &quot;qpcpp.h&quot;
+#include &quot;controller/bsp.h&quot;
+#include &lt;iostream&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;      // for memcpy() and memset()
+#include &lt;sys/select.h&gt;
+#include &lt;termios.h&gt;
+#include &lt;unistd.h&gt;
+
+Q_DEFINE_THIS_FILE
+
+using namespace QP;
+using namespace std;
+
+static struct termios l_tsav;
+
+//............................................................................
+void QF::onStartup(void) {
+    struct termios tio;  // modified terminal attributes
+
+    tcgetattr(0, &amp;l_tsav); // save the current terminal attributes
+    tcgetattr(0, &amp;tio);    // obtain the current terminal attributes
+    tio.c_lflag &amp;= ~(ICANON | ECHO); // disable the canonical mode &amp; echo
+    tcsetattr(0, TCSANOW, &amp;tio);     // set the new attributes
+
+    QF_setTickRate(BSP_TICKS_PER_SEC); // set the desired tick rate
+}
+//............................................................................
+void QF::onCleanup(void) {
+    BSP_Cleanup();
+    cout &lt;&lt; endl &lt;&lt; &quot;Bye Bye!!!&quot; &lt;&lt; endl;
+    tcsetattr(0, TCSANOW, &amp;l_tsav); // restore the saved terminal attributes
+}
+//............................................................................
+void QP::QF_onClockTick(void) {
+    QF::TICK_X(0U, (void *)0);  // perform the QF clock tick processing
+#ifdef QP_SCAN_INPUT
+    struct timeval timeout = { 0, 0 }; // timeout for select()
+    fd_set con; // FD set representing the console    FD_ZERO(&amp;con);
+    FD_SET(0, &amp;con);
+    // check if a console input is available, returns immediately
+    if (0 != select(1, &amp;con, 0, 0, &amp;timeout)) { // any descriptor set?
+        char ch;
+        read(0, &amp;ch, 1);
+        if (ch == '\33') { // ESC pressed?
+            QF::stop();
+        }
+        if (ch == 'a') { // ESC pressed?
+            BSP_Toggle_a();
+        }
+        if (ch == 'g') { // ESC pressed?
+            BSP_Toggle_g();
+        }
+        if (ch == 'm') { // ESC pressed?
+            BSP_Toggle_m();
+        }
+        if (ch == 'q') { // ESC pressed?
+            BSP_Toggle_q();
+        }
+        if (ch == 'd') { // ESC pressed?
+            BSP_Toggle_d();
+        }
+        if (ch == 's') { // ESC pressed?
+            BSP_Toggle_s();
+        }
+    }
+#endif
+}
+//............................................................................
+extern &quot;C&quot; void Q_onAssert(char const * const module, int loc) {
+    cout &lt;&lt; &quot;Assertion failed in &quot; &lt;&lt; module
+              &lt;&lt; &quot;location &quot; &lt;&lt; loc &lt;&lt; endl;
+    QS_ASSERTION(module, loc, static_cast&lt;uint32_t&gt;(10000U));
+    exit(-1);
+}
+</text>
+  </file>
+ </directory>
+</model>
