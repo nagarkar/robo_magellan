@@ -1,16 +1,18 @@
 # Table of Contents  
-[Eclipse setup](#link1)
+[Eclipse Configurations](#link1)
 
-[Executable build](#link2)
+[- Executable build](#link1_1)
 
-[Test build](#link3)
+[- Test build](#link1_2)
 
------------------------------
+[Running Tests](#link2)
+
+
 <a name="link1"/>
 
 # Eclipse Setup
 
-<a name="link2"/>
+<a name="link1_1"/>
 
 ## Executable build configuration
 ### Source Tree:
@@ -19,8 +21,8 @@
 ### Include folders
 + src/bbahrs, src/imu, src/qpcpp (various folders)
 
-------------------------------
-<a name="link3"/>
+
+<a name="link1_2"/>
 
 ## Test Build Configuration 
 
@@ -31,3 +33,9 @@
 ### Include folders changes from executable configuration
 + testcases (for various cpp files). These cpp are included in the test suites in the 'tests' folder.
 
+______________________________
+<a name="link1_2"/>
+
+# Running Tests
+
+TBD
