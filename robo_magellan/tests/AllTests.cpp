@@ -1,22 +1,26 @@
 
 #include "gtest/gtest.h"
+#include <libgpsmm.h>
+#include <signal.h>
 
 #include "SampleTest.cpp"
 #include "MadgwickTests.cpp"
-#include "BSPTests.cpp"
+//#include "LedGPSTests.cpp"
 #include "CircularBufferTests.cpp"
+#include "DSMTests.cpp"
+#include "MotorTests.cpp"
+#include "AOSPTests.cpp"
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
 
-#include <libgpsmm.h>
-#include<signal.h>
 void handle_sigint(int sig)
 {
     printf("Caught signal %d\n", sig);
 }
+
 int vmain(void)
 {
   signal(SIGINT, handle_sigint);

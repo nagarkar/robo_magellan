@@ -74,6 +74,8 @@ int main(int argn, char ** argc) {
     static QEvt const *blinkyQSto[10];
 	static QEvt const *ahrsQSto[10];
 	static QEvt const *gpsQSto[10];
+	static QEvt const *dsmQSto[10];
+	static QEvt const *diffctrlQSto[10];
 	//static QEvt const *tserverQSto[10];
 
     BSP_Setup(); // initialize the Board Support Package
@@ -98,8 +100,16 @@ int main(int argn, char ** argc) {
 					ahrsQSto, Q_DIM(ahrsQSto),		// event queue
 					(void *)0, 0U);					// stack (unused)
 
-	AO_GPS->start(3U,								// priority (must be unique)
-					gpsQSto, Q_DIM(gpsQSto),		// event queue
+//	AO_GPS->start(3U,								// priority (must be unique)
+//					gpsQSto, Q_DIM(gpsQSto),		// event queue
+//					(void *)0, 0U);					// stack (unused)
+
+	AO_DSM->start(4U,								// priority (must be unique)
+					dsmQSto, Q_DIM(dsmQSto),		// event queue
+					(void *)0, 0U);					// stack (unused)
+
+	AO_DSM->start(4U,								// priority (must be unique)
+					dsmQSto, Q_DIM(dsmQSto),		// event queue
 					(void *)0, 0U);					// stack (unused)
 
 	// Create a thread (https://goo.gl/ybJAeM) to run grpc.
