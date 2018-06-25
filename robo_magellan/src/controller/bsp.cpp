@@ -44,6 +44,15 @@ static void print_options();
 
 IMU_MODE quaternion_calculation_mode(SOFTWARE);
 
+/******* Utilities ***/
+BSP_RESULT BSP_RC_RESULT(int result) {
+	if (result == -1) {
+		return BSP_FAILURE;
+	} else {
+		return BSP_SUCCESS;
+	}
+}
+
 /********     GENERAL BOARD SUPPORT   *********/
 /**********************************************/
 
@@ -150,6 +159,7 @@ CircularBuffer<Attitude> l_attitudeBuffer(10);
 CircularBuffer<Attitude> * attitudeBuffer = &l_attitudeBuffer; // opaque pointer
 
 
+
 /**********	    GPS GPS            ************/
 /**********************************************/
 
@@ -160,8 +170,81 @@ BSP_RESULT BSP_DSM_Setup() {
 		fprintf(stderr,"failed to start initialize DSM\n");
 		return BSP_FAILURE;
 	}
+	return BSP_SUCCESS;
 }
 
+BSP_RESULT BSP_DSM_Close() {
+	if(rc_dsm_cleanup() == -1){
+		fprintf(stderr,"failed to cleanup initialize DSM\n");
+		return BSP_FAILURE;
+	}
+	return BSP_SUCCESS;
+}
+
+bool BSP_DSM_IsUp() {
+	if (rc_dsm_is_connection_active() != 0) {
+		return true;
+	}
+	// Wait, checking if new data is present periodically.
+	int wait_time_us = 1*1000*1000;
+	int loop_time = 50*1000;
+	while(rc_dsm_is_new_data()==0 && wait_time_us > 0) {
+		BSP_USLEEP(loop_time);
+		wait_time_us -= loop_time;
+	}
+	// Recheck if we are officially up.
+	if (rc_dsm_is_connection_active() != 0) {
+		return true;
+	}
+	return false;
+
+}
+
+int64_t BSP_DSM_Downtime() {
+	return rc_dsm_nanos_since_last_packet();
+}
+
+BSP_RESULT BSP_DSM_Callback(void (*callback)(void)) {
+	rc_dsm_set_callback(callback);
+	return BSP_SUCCESS;
+}
+
+double BSP_DSM_Get(int ch) {
+	return rc_dsm_ch_normalized(ch);
+}
+
+/****     Motor **********/
+static bool motor_setup_done = false;
+BSP_RESULT BSP_MOTORS_Setup() {
+	BSP_RESULT result = BSP_RC_RESULT(rc_motor_init());
+	motor_setup_done = (result == BSP_SUCCESS ? true : false);
+	return result;
+
+}
+
+BSP_RESULT BSP_MOTORS_Close() {
+	motor_setup_done = false;
+	return BSP_RC_RESULT(rc_motor_cleanup());
+}
+
+bool BSP_MOTORS_IsUp() {
+	return motor_setup_done;
+}
+
+int64_t BSP_MOTORS_Downtime() {
+	throw BSPNotImplementedException("");
+}
+
+BSP_RESULT BSP_MOTORS_Callback(void (*callback)(void)) {
+	throw BSPNotImplementedException("");
+}
+
+BSP_RESULT BSP_MOTORS_Set(BSP_MOTOR_ID motor, double duty_cycle) {
+	return BSP_RC_RESULT(rc_motor_set((int)motor, duty_cycle));
+}
+
+
+/***** GPS ***********/
 BSP_RESULT BSP_GPS_SingleShot(gps_data_t *gps_out) {
 
 	gpsmm gps_rec("localhost", DEFAULT_GPSD_PORT);
