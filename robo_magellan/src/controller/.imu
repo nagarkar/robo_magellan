@@ -13,8 +13,8 @@
   <item id=".::active_objects.h">0,0,1642,564,*</item>
   <item id=".::qp_plugs.cpp">0,0,1642,564</item>
   <item id="AOs::AHRS::SM">0,0,1642,564</item>
-  <item id="AOs::TelemetryServer::SM">756,0,640,480</item>
-  <item id="AOs::GPS::SM">0,84,640,480</item>
+  <item id="AOs::TelemetryServer::SM">160,0,640,480</item>
+  <item id="AOs::GPS::SM">800,0,640,480</item>
  </group>
  <group name="search">
   <item name="options">2032128</item>

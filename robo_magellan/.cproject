@@ -175,7 +175,9 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/bbahrs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/src/qpcpp/include}&quot;"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.preprocessor.def.767251964" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" useByScannerDiscovery="false"/>
+								<option id="gnu.cpp.compiler.option.preprocessor.def.767251964" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" useByScannerDiscovery="false" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="Q_EVT_CTOR"/>
+								</option>
 								<option id="gnu.cpp.compiler.option.other.other.179638233" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -pthread -DNDEBUG -fpermissive" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.dialect.std.303420125" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.cpp.compiler.dialect.c++1y" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.dialect.flags.1776432617" name="Other dialect flags" superClass="gnu.cpp.compiler.option.dialect.flags" useByScannerDiscovery="true" value="" valueType="string"/>
@@ -241,7 +243,6 @@
 					<fileInfo id="cdt.managedbuild.config.gnu.cross.exe.debug.405950635.1172546296.67466066.src/qpcpp/include/qs.h" name="qs.h" rcbsApplicability="disable" resourcePath="src/qpcpp/include/qs.h" toolsToInvoke=""/>
 					<sourceEntries>
 						<entry excluding="controller/main.cpp|controller/TelemetryTestService.cpp|imu/main.cpp|qpcpp/src/qs/qutest.cpp|qpcpp/src/qxk|qpcpp/include/qs.h|qpcpp/src/qs|imu/TelemetryTestService.cpp|qpcpp/src/qv|qpcpp/src/qk" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="test"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="tests"/>
 					</sourceEntries>
 				</configuration>

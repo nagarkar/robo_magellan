@@ -20,3 +20,7 @@
 #### Include folders changes from executable configuration
 + testcases (for various cpp files). These cpp are included in the test suites in the 'tests' folder.
 
+
+To make the code run, make sure following symbols are defined:
+
+Q_EVT_CTOR		To enable constructors for events
