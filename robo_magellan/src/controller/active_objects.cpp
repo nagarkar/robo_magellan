@@ -19,6 +19,8 @@
 #include "qpcpp.h" // QP/C++ framework API
 #include "bsp.h"   // Board Support Package interface
 #include "active_objects.h"
+#include "aosp.h"
+
 
 /**
  * This file contains teh following format:
@@ -31,6 +33,21 @@
  * and used elsewhere, for instance, to start the AO in the main program.
 **/
 using namespace QP;
+
+//$define${AOs::DifferentialControlEvt} ######################################
+// Check for the minimum required QP version
+#if ((QP_VERSION < 601) || (QP_VERSION != ((QP_RELEASE^4294967295U) % 0x3E8)))
+#error qpcpp version 6.0.1 or higher required
+#endif
+//${AOs::DifferentialControlEvt} .............................................
+//${AOs::DifferentialCont~::DifferentialControlEvt} ..........................
+DifferentialControlEvt::DifferentialControlEvt(
+    QSignal sig,
+    double & r_left_speed,
+    double& r_right_speed)
+: QEvt(sig), left_speed(r_left_speed), right_speed(r_right_speed)
+{}
+//$enddef${AOs::DifferentialControlEvt} ######################################
 
 //$declare${AOs::Blinky} #####################################################
 //${AOs::Blinky} .............................................................
@@ -50,10 +67,6 @@ protected:
 Blinky l_blinky;
 QActive * const AO_Blinky    = &l_blinky; // opaque pointer
 //$define${AOs::Blinky} ######################################################
-// Check for the minimum required QP version
-#if ((QP_VERSION < 601) || (QP_VERSION != ((QP_RELEASE^4294967295U) % 0x3E8)))
-#error qpcpp version 6.0.1 or higher required
-#endif
 //${AOs::Blinky} .............................................................
 //${AOs::Blinky::Blinky} .....................................................
 Blinky::Blinky()
@@ -305,6 +318,127 @@ QP::QState GPS::ERROR(GPS * const me, QP::QEvt const * const e) {
     return status_;
 }
 //$enddef${AOs::GPS} #########################################################
+
+//$declare${AOs::DSM} ########################################################
+//${AOs::DSM} ................................................................
+class DSM : public QP::QActive {
+private:
+    QP::QTimeEvt m_time_evt;
+
+public:
+    DSM();
+
+protected:
+    static QP::QState initial(DSM * const me, QP::QEvt const * const e);
+    static QP::QState Automatic(DSM * const me, QP::QEvt const * const e);
+    static QP::QState RemoteControl(DSM * const me, QP::QEvt const * const e);
+    static QP::QState WaitForConnection(DSM * const me, QP::QEvt const * const e);
+    static QP::QState Connected(DSM * const me, QP::QEvt const * const e);
+};
+//$enddecl${AOs::DSM} ########################################################
+DSM l_dsm;
+QActive * const AO_DSM       = &l_dsm; // opaque pointer
+//$define${AOs::DSM} #########################################################
+//${AOs::DSM} ................................................................
+//${AOs::DSM::DSM} ...........................................................
+DSM::DSM()
+  : QActive(Q_STATE_CAST(&DSM::initial)),
+    m_time_evt(this, TIMEOUT_SIG)
+{}
+
+//${AOs::DSM::SM} ............................................................
+QP::QState DSM::initial(DSM * const me, QP::QEvt const * const e) {
+    //${AOs::DSM::SM::initial}
+    return Q_TRAN(&Automatic);
+}
+//${AOs::DSM::SM::Automatic} .................................................
+QP::QState DSM::Automatic(DSM * const me, QP::QEvt const * const e) {
+    QP::QState status_;
+    switch (e->sig) {
+        //${AOs::DSM::SM::Automatic::SWITCH_TO_REMOTE}
+        case SWITCH_TO_REMOTE_SIG: {
+            status_ = Q_TRAN(&RemoteControl);
+            break;
+        }
+        default: {
+            status_ = Q_SUPER(&top);
+            break;
+        }
+    }
+    return status_;
+}
+//${AOs::DSM::SM::RemoteControl} .............................................
+QP::QState DSM::RemoteControl(DSM * const me, QP::QEvt const * const e) {
+    QP::QState status_;
+    switch (e->sig) {
+        //${AOs::DSM::SM::RemoteControl::initial}
+        case Q_INIT_SIG: {
+             me->m_time_evt.armX(BSP_TICKS_PER_SEC, BSP_TICKS_PER_SEC);
+            status_ = Q_TRAN(&WaitForConnection);
+            break;
+        }
+        //${AOs::DSM::SM::RemoteControl::SWITCH_TO_AUTO}
+        case SWITCH_TO_AUTO_SIG: {
+            if (BSP_DSM_Close() == BSP_FAILURE) {
+                cout << "Failed to close DSM when switching to auto mode" << endl;
+            }
+            status_ = Q_TRAN(&Automatic);
+            break;
+        }
+        default: {
+            status_ = Q_SUPER(&top);
+            break;
+        }
+    }
+    return status_;
+}
+//${AOs::DSM::SM::RemoteControl::WaitForConnection} ..........................
+QP::QState DSM::WaitForConnection(DSM * const me, QP::QEvt const * const e) {
+    QP::QState status_;
+    switch (e->sig) {
+        //${AOs::DSM::SM::RemoteControl::WaitForConnection}
+        case Q_ENTRY_SIG: {
+            if (!BSP_DSM_IsUp()) {
+               BSP_Warn(BSP_DSM_Setup(), "Failed on BSP_DSM_Setup");
+            } else {
+                AOSP_DSM_Connected();
+                return Q_TRAN(&DSM::Connected);
+            }
+            status_ = Q_HANDLED();
+            break;
+        }
+        //${AOs::DSM::SM::RemoteControl::WaitForConnectio~::TIMEOUT}
+        case TIMEOUT_SIG: {
+            status_ = Q_TRAN(&WaitForConnection);
+            break;
+        }
+        default: {
+            status_ = Q_SUPER(&RemoteControl);
+            break;
+        }
+    }
+    return status_;
+}
+//${AOs::DSM::SM::RemoteControl::Connected} ..................................
+QP::QState DSM::Connected(DSM * const me, QP::QEvt const * const e) {
+    QP::QState status_;
+    switch (e->sig) {
+        //${AOs::DSM::SM::RemoteControl::Connected}
+        case Q_ENTRY_SIG: {
+            if (!BSP_DSM_IsUp()) {
+                return Q_TRAN(&me->WaitForConnection);
+            }
+            status_ = Q_HANDLED();
+            break;
+        }
+        default: {
+            status_ = Q_SUPER(&RemoteControl);
+            break;
+        }
+    }
+    return status_;
+}
+//$enddef${AOs::DSM} #########################################################
 
 //$declare${AOs::TelemetryServer} ############################################
 //${AOs::TelemetryServer} ....................................................

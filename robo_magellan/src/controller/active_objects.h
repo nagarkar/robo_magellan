@@ -29,14 +29,29 @@ enum Signals {
     MAX_PUB_SIG,  // the last published signal
     IMU_STARTED_SIG,
     TIMEOUT_SIG,
+    DIFFERENTIAL_CONTROL_SIG,
+    SWITCH_TO_AUTO_SIG,
+    SWITCH_TO_REMOTE_SIG,
     MAX_SIG       // the last signal
 };
 
 extern QActive * const AO_Blinky; // opaque pointer
 extern QActive * const AO_AHRS; // opaque pointer
 extern QActive * const AO_GPS; // opaque pointer
+extern QActive * const AO_DSM; // opaque pointer
 extern QActive * const AO_TServer; // opaque pointer
 
-#ifdef CPP
-}
-#endif
+//$declare${AOs::DifferentialControlEvt} #####################################
+//${AOs::DifferentialControlEvt} .............................................
+class DifferentialControlEvt : public QP::QEvt {
+public:
+    double left_speed;
+    double right_speed;
+
+public:
+    DifferentialControlEvt(
+        QSignal sig,
+        double & r_left_speed,
+        double& r_right_speed);
+};
+//$enddecl${AOs::DifferentialControlEvt} #####################################
