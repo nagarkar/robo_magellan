@@ -26,7 +26,7 @@ SET(PUBLIC_HEADER_FILES
 	${CMAKE_BINARY_DIR}/telemetry_service.grpc.pb.h
 	)
 message("SOURCES: ${SOURCES}")
-message("PUBLIC_HEADER_FILES: ${PUBLIC_HEADER_FILES}")
+message("PUBLIC_HEADER_FI  ${PUBLIC_HEADER_FILES}")
 message("CMAKE_INSTALL_PREFIX}: ${CMAKE_INSTALL_PREFIX}")
 link_directories	(/usr/lib ${CMAKE_INSTALL_PREFIX}/lib)
 include_directories	(/usr/include ${CMAKE_INSTALL_PREFIX}/include)
