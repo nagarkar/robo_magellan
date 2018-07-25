@@ -37,10 +37,18 @@ namespace {
 		  cout << "WARNING: Could not run motor tests since Motors are not active." << endl;
 		  return;
 	  }
-	  const int motor = MOTOR_3;
+	  cout << "Starting Left motor test" << endl;
 	  ASSERT_TRUE(BSP_MOTORS_IsUp());
-	  ASSERT_EQ(BSP_MOTORS_Set(motor, 0.5), BSP_SUCCESS);
-	  BSP_USLEEP(0.1*1000*1000);
-	  BSP_MOTORS_Set(motor, 0);
+	  ASSERT_EQ(BSP_MOTORS_Set(LEFT_MOTORS, .5), BSP_SUCCESS);
+	  sleep(5);
+	  ASSERT_EQ(BSP_MOTORS_Set(LEFT_MOTORS, -.5), BSP_SUCCESS);
+	  sleep(5);
+	  ASSERT_EQ(BSP_MOTORS_Set(LEFT_MOTORS, 0), BSP_SUCCESS);
+	  cout << "Starting Right motor test" << endl;
+	  ASSERT_EQ(BSP_MOTORS_Set(RIGHT_MOTORS, .5), BSP_SUCCESS);
+	  sleep(5);
+	  ASSERT_EQ(BSP_MOTORS_Set(RIGHT_MOTORS, -.5), BSP_SUCCESS);
+	  sleep(5);
+	  ASSERT_EQ(BSP_MOTORS_Set(RIGHT_MOTORS, 0), BSP_SUCCESS);
   }
 }

@@ -58,11 +58,13 @@ BSP_RESULT BSP_RC_RESULT(int result) {
 
 static Server * server;
 
-BSP_RESULT BSP_Setup(void) {
-	cout	<< "IMU Streaming Data..." << endl
-			<< "QP version: " << QP_VERSION_STR << endl			
-			<< "Press ESC to quit..." << endl;
-	print_options();
+BSP_RESULT BSP_Setup(bool print = true) {
+	if (print) {
+		cout	<< "IMU Streaming Data..." << endl
+				<< "QP version: " << QP_VERSION_STR << endl
+				<< "Press ESC to quit..." << endl;
+		print_options();
+	}
 
 	if(rc_kill_existing_process(2.0 /* timeout sec */) < -2) {
 		return BSP_FAILURE;
@@ -110,7 +112,7 @@ void BSP_Toggle_q(void) { default_output_mode = QUAT; }
 void BSP_Toggle_d(void) { default_output_mode = DMPQUAT; }
 void BSP_Toggle_s(void) { default_output_mode = STOP; }
 
-OUTPUT_MODE default_output_mode(QUAT);
+OUTPUT_MODE default_output_mode(STOP);
 
 
 
@@ -213,34 +215,112 @@ double BSP_DSM_Get(int ch) {
 	return rc_dsm_ch_normalized(ch);
 }
 
-/****     Motor **********/
-static bool motor_setup_done = false;
-BSP_RESULT BSP_MOTORS_Setup() {
+/****  EduMIP Motor **********/
+static bool edumip_motor_setup_done = false;
+BSP_RESULT BSP_EDUMIP_MOTORS_Setup() {
 	BSP_RESULT result = BSP_RC_RESULT(rc_motor_init());
-	motor_setup_done = (result == BSP_SUCCESS ? true : false);
+	edumip_motor_setup_done = (result == BSP_SUCCESS ? true : false);
 	return result;
 
 }
 
-BSP_RESULT BSP_MOTORS_Close() {
-	motor_setup_done = false;
+BSP_RESULT  BSP_EDUMIP_MOTORS_Close() {
+	edumip_motor_setup_done = false;
 	return BSP_RC_RESULT(rc_motor_cleanup());
+}
+
+bool BSP_EDUMIP_MOTORS_IsUp() {
+	return edumip_motor_setup_done;
+}
+
+int64_t BSP_EDUMIP_MOTORS_Downtime() {
+	throw BSPNotImplementedException("");
+}
+
+BSP_RESULT BSP_EDUMIP_MOTORS_Callback(void (*callback)(void)) {
+	throw BSPNotImplementedException("");
+}
+
+BSP_RESULT BSP_EDUMIP_MOTORS_Set(BSP_EDUMIP_MOTOR_ID motor, double duty_cycle) {
+	return BSP_RC_RESULT(rc_motor_set((int)motor, duty_cycle));
+}
+
+/****** Motors *****/
+static bool motor_setup_done = false;
+
+
+BSP_RESULT BSP_MOTORS_Setup() {
+	motor_setup_done = false;
+
+	BSP_RESULT result = BSP_PWM_Setup();
+	if (result == BSP_FAILURE) {
+		cout << "PWM Setup failed during motor setup" << endl;
+		return result;
+	}
+
+	result = BSP_RC_RESULT(rc_gpio_init(MOTOR_DIR_PIN_CHIP, MOTOR_DIR_LEFT_PIN, GPIOHANDLE_REQUEST_OUTPUT));
+	if (result == BSP_FAILURE) {
+		cout << "GPIO left pin direction Setup failed during motor setup" << endl;
+		return result;
+	}
+
+	result = BSP_RC_RESULT(rc_gpio_init(MOTOR_DIR_PIN_CHIP, MOTOR_DIR_RGHT_PIN, GPIOHANDLE_REQUEST_OUTPUT));
+	if (result == BSP_FAILURE) {
+		cout << "GPIO right pin direction Setup failed during motor setup" << endl;
+		return result;
+	}
+
+	motor_setup_done = true;
+	return result;
+}
+
+BSP_RESULT  BSP_MOTORS_Close() {
+	motor_setup_done = false;
+	return BSP_PWM_Close();
 }
 
 bool BSP_MOTORS_IsUp() {
 	return motor_setup_done;
 }
 
-int64_t BSP_MOTORS_Downtime() {
-	throw BSPNotImplementedException("");
-}
+#define DROK_MOTOR_DRIVER_DIR_FORWARD 0
+#define DROK_MOTOR_DRIVER_DIR_REVERSE 1
 
-BSP_RESULT BSP_MOTORS_Callback(void (*callback)(void)) {
-	throw BSPNotImplementedException("");
-}
+BSP_RESULT BSP_MOTORS_Set(BSP_MOTOR_GROUP_ID motor, double duty_cycle) {
 
-BSP_RESULT BSP_MOTORS_Set(BSP_MOTOR_ID motor, double duty_cycle) {
-	return BSP_RC_RESULT(rc_motor_set((int)motor, duty_cycle));
+	// Bound duty cycle and use it's sign to figure out direction.
+	duty_cycle = fmin(fmax(duty_cycle, -1.0f), 1.0f);
+	int nominal_direction = duty_cycle < 0 ? DROK_MOTOR_DRIVER_DIR_REVERSE : DROK_MOTOR_DRIVER_DIR_FORWARD;
+
+	char channel;
+	int direction_pin;
+	int direction_pin_value = -1;
+
+	// Figure out the PWM channel and direction pin to use.
+	switch(motor) {
+	case LEFT_MOTORS:
+		channel = PWM_CHANNEL_A;
+		direction_pin = MOTOR_DIR_LEFT_PIN;
+		direction_pin_value = LEFT_MOTOR_POLARITY_REVERSED ? !nominal_direction : nominal_direction;
+		break;
+	case RIGHT_MOTORS:
+		channel = PWM_CHANNEL_B;
+		direction_pin = MOTOR_DIR_RGHT_PIN;
+		direction_pin_value = RIGHT_MOTOR_POLARITY_REVERSED ? !nominal_direction : nominal_direction;
+		break;
+	default:
+		cout << "Unknown motor group id" << endl;
+		return BSP_FAILURE;
+	}
+
+
+	BSP_RESULT result = BSP_RC_RESULT(rc_gpio_set_value(MOTOR_DIR_PIN_CHIP, direction_pin, direction_pin_value));
+	if(result == BSP_FAILURE) {
+		cout << "FATAL: Could not set gpio value on motor direction pin" << endl;
+		return result;
+	}
+
+	return BSP_PWM_Set(channel, fabs(duty_cycle));
 }
 
 
@@ -504,4 +584,20 @@ void BSP_PublishAttitude(void) {
 		}		
 	}
 	updateAttitudeBuffer();
+}
+
+/********* PWM *********/
+#define PWM_CHIP_ID 0
+#define PWM_FREQ 25000
+
+BSP_RESULT BSP_PWM_Setup() {
+	return BSP_RC_RESULT(rc_pwm_init(PWM_CHIP_ID, PWM_FREQ));
+}
+
+BSP_RESULT BSP_PWM_Close() {
+	return BSP_RC_RESULT(rc_pwm_cleanup(PWM_CHIP_ID));
+}
+
+BSP_RESULT BSP_PWM_Set(char channel, double duty) {
+	return BSP_RC_RESULT(rc_pwm_set_duty(PWM_CHIP_ID, channel, duty));
 }

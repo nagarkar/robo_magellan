@@ -3,13 +3,15 @@
 #include <libgpsmm.h>
 #include <signal.h>
 
-#include "SampleTest.cpp"
+//#include "SampleTest.cpp"
 #include "MadgwickTests.cpp"
 //#include "LedGPSTests.cpp"
 #include "CircularBufferTests.cpp"
-#include "DSMTests.cpp"
-#include "MotorTests.cpp"
+//#include "DSMTests.cpp"
+//#include "EDUMotorTests.cpp"
+//#include "MotorTests.cpp"
 #include "AOSPTests.cpp"
+//#include "PWMTests.cpp"
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

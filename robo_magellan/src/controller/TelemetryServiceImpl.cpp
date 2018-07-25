@@ -80,7 +80,7 @@ Status TelemetryServiceImpl::GetAttitudeStream(ServerContext * context, const At
 	return Status::OK;
 }
 
-std::unique_ptr<Server> TelemetryServiceImpl::RunServer(CircularBuffer<Attitude> * const buffer, bool wait) {
+void TelemetryServiceImpl::RunServer(CircularBuffer<Attitude> * const buffer, bool wait) {
 	const grpc::string server_address("0.0.0.0");
 	int port = 50051;
 	TelemetryServiceImpl service(buffer);
@@ -100,6 +100,4 @@ std::unique_ptr<Server> TelemetryServiceImpl::RunServer(CircularBuffer<Attitude>
 	if (wait) {
 		server->Wait();
 	}
-	return server;
-	//server->Shutdown();
 }

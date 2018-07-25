@@ -36,5 +36,5 @@ public:
     Status setTarget(ServerContext* context, const ::telemetry::Waypoint* request, ::telemetry::NoContent* response);
     Status setWaypoints(ServerContext* context, const Waypoints* request, NoContent* response);
 
-	static std::unique_ptr<Server> RunServer(CircularBuffer<Attitude> * const buffer, bool wait);
+	static void RunServer(CircularBuffer<Attitude> * const buffer, bool wait);
 };

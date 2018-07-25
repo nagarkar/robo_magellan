@@ -349,7 +349,8 @@ DSM::DSM()
 //${AOs::DSM::SM} ............................................................
 QP::QState DSM::initial(DSM * const me, QP::QEvt const * const e) {
     //${AOs::DSM::SM::initial}
-    return Q_TRAN(&Automatic);
+    BSP_Warn_on_failure(BSP_MOTORS_Setup(), "Failed on BSP_Motor_Setup");
+    return Q_TRAN(&RemoteControl);
 }
 //${AOs::DSM::SM::Automatic} .................................................
 QP::QState DSM::Automatic(DSM * const me, QP::QEvt const * const e) {
@@ -371,17 +372,23 @@ QP::QState DSM::Automatic(DSM * const me, QP::QEvt const * const e) {
 QP::QState DSM::RemoteControl(DSM * const me, QP::QEvt const * const e) {
     QP::QState status_;
     switch (e->sig) {
+        //${AOs::DSM::SM::RemoteControl}
+        case Q_ENTRY_SIG: {
+            me->m_time_evt.armX(BSP_TICKS_PER_SEC, BSP_TICKS_PER_SEC);
+
+            AOSP_DSM_Callback_Deactivate(); // Activate it later when DSM is initialized.
+            status_ = Q_HANDLED();
+            break;
+        }
         //${AOs::DSM::SM::RemoteControl::initial}
         case Q_INIT_SIG: {
-             me->m_time_evt.armX(BSP_TICKS_PER_SEC, BSP_TICKS_PER_SEC);
             status_ = Q_TRAN(&WaitForConnection);
             break;
         }
         //${AOs::DSM::SM::RemoteControl::SWITCH_TO_AUTO}
         case SWITCH_TO_AUTO_SIG: {
-            if (BSP_DSM_Close() == BSP_FAILURE) {
-                cout << "Failed to close DSM when switching to auto mode" << endl;
-            }
+            BSP_Warn_on_failure(BSP_DSM_Close(),
+                "Failed to close DSM when switching to auto mode");
             status_ = Q_TRAN(&Automatic);
             break;
         }
@@ -398,18 +405,24 @@ QP::QState DSM::WaitForConnection(DSM * const me, QP::QEvt const * const e) {
     switch (e->sig) {
         //${AOs::DSM::SM::RemoteControl::WaitForConnection}
         case Q_ENTRY_SIG: {
-            if (!BSP_DSM_IsUp()) {
-               BSP_Warn(BSP_DSM_Setup(), "Failed on BSP_DSM_Setup");
-            } else {
-                AOSP_DSM_Connected();
-                return Q_TRAN(&DSM::Connected);
-            }
+            BSP_Warn_on_failure(BSP_DSM_Close(), "Failed on BSP_DSM_Close");
+            BSP_Warn_on_failure(BSP_DSM_Setup(), "Failed on BSP_DSM_Setup");
             status_ = Q_HANDLED();
             break;
         }
         //${AOs::DSM::SM::RemoteControl::WaitForConnectio~::TIMEOUT}
         case TIMEOUT_SIG: {
-            status_ = Q_TRAN(&WaitForConnection);
+            //${AOs::DSM::SM::RemoteControl::WaitForConnectio~::TIMEOUT::[DSMdown]}
+            if (!BSP_DSM_IsUp()) {
+                status_ = Q_TRAN(&WaitForConnection);
+            }
+            //${AOs::DSM::SM::RemoteControl::WaitForConnectio~::TIMEOUT::[DSMUp]}
+            else if (BSP_DSM_IsUp()) {
+                status_ = Q_TRAN(&Connected);
+            }
+            else {
+                status_ = Q_UNHANDLED();
+            }
             break;
         }
         default: {
@@ -425,10 +438,20 @@ QP::QState DSM::Connected(DSM * const me, QP::QEvt const * const e) {
     switch (e->sig) {
         //${AOs::DSM::SM::RemoteControl::Connected}
         case Q_ENTRY_SIG: {
-            if (!BSP_DSM_IsUp()) {
-                return Q_TRAN(&me->WaitForConnection);
-            }
+            AOSP_DSM_Callback_Activate();
             status_ = Q_HANDLED();
+            break;
+        }
+        //${AOs::DSM::SM::RemoteControl::Connected::TIMEOUT}
+        case TIMEOUT_SIG: {
+            //${AOs::DSM::SM::RemoteControl::Connected::TIMEOUT::[DSMDown]}
+            if (!BSP_DSM_IsUp()) {
+                AOSP_DSM_Callback_Activate();
+                status_ = Q_TRAN(&WaitForConnection);
+            }
+            else {
+                status_ = Q_UNHANDLED();
+            }
             break;
         }
         default: {
