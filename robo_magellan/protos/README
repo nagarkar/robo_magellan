@@ -1,0 +1,10 @@
+Prerequisites
+- grpc-cpp-plugin and protoc version > 3.5.1
+
+To update these files, run these on linux starting in this directory
+mkdir -p build
+cd build
+cmake .. && make
+# This will take a few minutes, will result in all cc and header files and a library being generated
+cp telemetry_service* ../
+git add ../telemetry_service* && git commit -m "Your message && git push
